@@ -1,0 +1,35 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+.python-version
+
+# Virtual environments
+.venv
+
+#  Ignore uv build and dist directories
+build/
+dist/
+
+#  Ignore Pycache
+__pycache__
+
+#  Ignore uv version lock
+uv.lock
+package-lock.json
+
+#  Ignore Eggs
+*.egg-info
+
+#  Ignore npm node_modules
+src/vscode/node_modules/
+
+#  Ignore built VSCode extensions
+*.vsix
+
+#  Ignore .DS_Store
+.DS_Store
+.vscode/launch.json
