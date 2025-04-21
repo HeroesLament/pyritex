@@ -165,3 +165,14 @@ NETLINK_TX_RING = 7
 NETLINK_LISTEN_ALL_NSID = 8
 NETLINK_EXT_ACK = 11
 NETLINK_GET_STRICT_CHK = 12
+
+#  Alignment
+NLMSG_ALIGNTO = 4
+def NLMSG_ALIGN(length: int) -> int:
+    return (length + NLMSG_ALIGNTO - 1) & ~(NLMSG_ALIGNTO - 1)
+
+def NLMSG_LENGTH(payload_len: int) -> int:
+    return payload_len + NLMSG_ALIGN(NLMSG_HDR_SIZE)
+
+def NLMSG_SPACE(payload_len: int) -> int:
+    return NLMSG_ALIGN(NLMSG_LENGTH(payload_len))

@@ -1,4 +1,4 @@
-# pyrite/netlink/__init__.py
+# pyritex/netlink/__init__.py
 
 from .socket import NetlinkSocket
 from .consts import *

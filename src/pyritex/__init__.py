@@ -1,5 +1,5 @@
 """
-Pyrite: A Netlink library for Python.
+Pyritex: A Netlink library for Python.
 """
 
 from .log import logger, set_log_level
