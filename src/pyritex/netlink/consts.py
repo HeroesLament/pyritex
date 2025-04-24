@@ -6,6 +6,25 @@ AF_INET = getattr(socket, 'AF_INET', 2)
 AF_NETLINK = getattr(socket, 'AF_NETLINK', 16)  # Default to 16 for Linux compatibility
 AF_BRIDGE = getattr(socket, 'AF_BRIDGE', 7)    # Default to 7 for bridge sockets
 
+# Interface constants
+IFLA_IFNAME = 3
+
+# Interface Flags (from if.h)
+IFF_LOWER_UP = 0x10000
+IFF_DORMANT = 0x20000
+
+# Link Attribute Types (IFLA_*)
+IFLA_WIRELESS = 11
+IFLA_OPERSTATE = 16
+IFLA_LINKMODE = 17
+
+# Interface Operational States
+IF_OPER_DORMANT = 5
+IF_OPER_UP = 6
+
+# Multicast Group Index
+RTNLGRP_LINK = 1
+
 # Protocol-specific constants
 SOL_NETLINK = getattr(socket, 'SOL_NETLINK', 270)  # Default to 270 for Netlink-specific socket options
 

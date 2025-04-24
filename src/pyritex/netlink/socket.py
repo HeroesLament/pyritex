@@ -10,8 +10,8 @@ import struct
 import anyio.abc
 import anyio.streams
 import anyio.streams.memory
-from toolz.curried import pipe, map, filter, reduceby, concat, groupby
-from typing import Iterator, Optional
+from toolz.curried import pipe, map, filter, reduceby, concat, groupby, reduce
+from typing import AsyncIterator, Iterator, Optional
 
 
 from abc import abstractmethod
@@ -209,6 +209,38 @@ class ImplNetlinkSocket(NetlinkSocketTrait, metaclass=Impl, target="NetlinkSocke
             except Exception as e:
                 logger.exception("💥 Exception while receiving from inbound channel")
                 return Err(e)
+
+    async def listen(self, groups: list[int]) -> AsyncIterator[tuple[dict, bytes]]:
+        """
+        Subscribes to given multicast groups and yields unsolicited Netlink messages.
+
+        This generator runs indefinitely until cancelled.
+        """
+        if not self.sock:
+            raise RuntimeError("Socket not initialized. Call initialize() first.")
+
+        if not getattr(self, "_multicast_bound", False):
+            try:
+                group_mask = sum(1 << (g - 1) for g in groups)
+                self.sock.bind((0, group_mask))
+                self._multicast_bound = True
+                logger.info(f"📡 Subscribed to groups: {groups} (mask={group_mask})")
+            except Exception as e:
+                logger.error(f"Failed to bind for multicast: {e}")
+                return  # silent fail — stops generator
+
+        while self._running:
+            try:
+                msg = await self.inbound_recv.receive()
+                if isinstance(msg, dict) and "header" in msg and "payload" in msg:
+                    yield msg["header"], msg["payload"]
+                else:
+                    logger.warning("listen(): malformed msg")
+            except anyio.get_cancelled_exc_class():
+                logger.debug("listen(): cancelled")
+                break
+            except Exception as e:
+                logger.warning(f"listen() error: {e}")
 
     async def close(self) -> Result[None, str]:
         """
