@@ -188,10 +188,12 @@ class ImplNetlinkSocket(NetlinkSocketTrait, metaclass=Impl, target="NetlinkSocke
         while self._running:
             try:
                 msg = await self.inbound_recv.receive()
-                if isinstance(msg, dict) and "header" in msg and "payload" in msg:
-                    yield msg["header"], msg["payload"]
+                if isinstance(msg, dict) and "payload" in msg:
+                    header = {k: v for k, v in msg.items() if k in ("len", "type", "flags", "seq", "pid")}
+                    payload = msg["payload"]
+                    yield header, payload
                 else:
-                    logger.warning("listen(): malformed msg")
+                    logger.warning("listen(): malformed msg (missing payload?)")
             except anyio.get_cancelled_exc_class():
                 logger.debug("listen(): cancelled")
                 break
@@ -300,14 +302,10 @@ class ImplNetlinkSocket(NetlinkSocketTrait, metaclass=Impl, target="NetlinkSocke
     def _is_valid_chunk(raw: bytes) -> bool:
         return len(raw) >= NLMSG_HDR_SIZE
 
-    async def _read_loop(self):
-        logger.trace("Starting Netlink read loop")
-
-        async for chunk in self._rx_chunks(self.sock):
-            logger.debug(f"📥 Received {len(chunk)} bytes from socket")
-
-            try:
-                frames = pipe(
+    async def _parse_chunk(self, chunk: bytes) -> Optional[list[tuple[dict, bytes]]]:
+        try:
+            return list(
+                pipe(
                     chunk,
                     self.split_frames,
                     filter(self._is_valid_chunk),
@@ -315,50 +313,78 @@ class ImplNetlinkSocket(NetlinkSocketTrait, metaclass=Impl, target="NetlinkSocke
                     filter(self._is_ok),
                     map(self._unwrap),
                 )
-            except Exception as e:
-                logger.exception("Exception during frame processing")
-                continue
+            )
+        except Exception as e:
+            logger.exception("💥 Exception during frame parsing")
+            return None
 
-            frame_list = list(frames)  # materialize for logging & reuse
-            logger.debug(f"Extracted {len(frame_list)} valid frame(s) from chunk")
+    def _group_by_seq(self, frames: list[tuple[dict, bytes]]) -> dict[int, list[tuple[dict, bytes]]]:
+        try:
+            return pipe(
+                frames,
+                groupby(self._by_seq_key),
+            )
+        except Exception as e:
+            logger.exception("Exception during sequence grouping")
+            return {}
 
+    @staticmethod
+    def _is_multicast(pid: int) -> bool:
+        return pid == 0
+
+    async def _dispatch_multicast(self, seq: int, group: list[tuple[dict, bytes]]):
+        fragments = [full_frame for hdr, full_frame in group]
+        logger.debug(f"Immediate dispatch {len(fragments)} multicast frame(s) for seq {seq}")
+        try:
+            await self._dispatch(fragments)
+        except Exception as e:
+            logger.exception(f"Exception during multicast dispatch")
+
+    async def _dispatch_transactional(self, seq: int, group: list[tuple[dict, bytes]]):
+        if seq not in self._message_buffer:
+            logger.debug(f"Creating new buffer for transactional seq {seq}")
+            self._message_buffer[seq] = []
+
+        seen_done = False
+
+        for hdr, full_frame in group:
+            logger.debug(f"Msg type={hdr['type']} len={hdr['len']} pid={hdr['pid']}")
+            self._message_buffer[seq].append(full_frame)
+
+            if hdr["type"] == NLMSG_DONE:
+                seen_done = True
+                logger.debug(f"Detected NLMSG_DONE in seq {seq}")
+
+        if seen_done:
+            fragments = self._message_buffer.pop(seq)
+            logger.debug(f"Dispatching {len(fragments)} transactional frame(s) for seq {seq}")
             try:
-                by_seq = pipe(
-                    frame_list,
-                    groupby(self._by_seq_key),
-                )
+                await self._dispatch(fragments)
             except Exception as e:
-                logger.exception("Exception during sequence grouping")
-                continue
+                logger.exception(f"Exception during transactional dispatch")
 
-            logger.debug(f"Grouped into {len(by_seq)} sequence(s): {list(by_seq.keys())}")
+    async def _read_loop(self):
+        logger.trace("Starting Netlink read loop")
+
+        async for chunk in self._rx_chunks(self.sock):
+            logger.debug(f"Received {len(chunk)} bytes from socket")
+
+            frames = await self._parse_chunk(chunk)
+            if frames is None:
+                continue  # Parsing error
+
+            by_seq = self._group_by_seq(frames)
 
             for seq, group in by_seq.items():
-                logger.debug(f"Processing seq {seq} with {len(group)} message(s)")
+                logger.debug(f"🧵 Processing seq {seq} with {len(group)} message(s)")
 
-                if seq not in self._message_buffer:
-                    logger.debug(f"Creating new buffer for seq {seq}")
-                    self._message_buffer[seq] = []
+                first_hdr, _ = group[0]
+                if self._is_multicast(first_hdr["pid"]):
+                    await self._dispatch_multicast(seq, group)
+                else:
+                    await self._dispatch_transactional(seq, group)
 
-                seen_done = False
-
-                for hdr, full_frame in group:
-                    logger.debug(f"Msg type={hdr['type']} len={hdr['len']} pid={hdr['pid']}")
-                    self._message_buffer[seq].append(full_frame)
-
-                    if hdr["type"] == NLMSG_DONE:
-                        seen_done = True
-                        logger.debug(f"Detected NLMSG_DONE in seq {seq}")
-
-                if seen_done:
-                    fragments = self._message_buffer.pop(seq)
-                    logger.debug(f"Dispatching {len(fragments)} buffered frame(s) for seq {seq}")
-                    try:
-                        await self._dispatch(fragments)
-                    except Exception as e:
-                        logger.exception(f"Exception during dispatch of seq {seq}")
-
-            logger.trace("Waiting for next Netlink message...")
+            logger.trace("⏳ Waiting for next Netlink message...")
 
     @staticmethod
     def _is_ok(result):
