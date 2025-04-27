@@ -367,8 +367,8 @@ class ImplNetlinkSocket(NetlinkSocketTrait, metaclass=Impl, target="NetlinkSocke
                     self.split_frames,
                     filter(self._is_valid_chunk),
                     map(self.parse_header),
-                    filter(self.is_ok),
-                    map(self.unwrap),
+                    filter(self._is_ok),
+                    map(self._unwrap),
                 )
             except Exception as e:
                 logger.exception("Exception during frame processing")
@@ -414,6 +414,14 @@ class ImplNetlinkSocket(NetlinkSocketTrait, metaclass=Impl, target="NetlinkSocke
                         logger.exception(f"Exception during dispatch of seq {seq}")
 
             logger.trace("Waiting for next Netlink message...")
+
+    @staticmethod
+    def _is_ok(result):
+        return result.is_ok()
+
+    @staticmethod
+    def _unwrap(result):
+        return result.unwrap()
 
     @staticmethod
     def _by_seq_key(tpl):
