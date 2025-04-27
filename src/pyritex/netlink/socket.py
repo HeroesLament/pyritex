@@ -24,11 +24,19 @@ from oxitrait.runtime import requires_traits
 
 from result import Result, Ok, Err
 
-from pyritex import logger
-from pyritex.netlink.consts import *
-from pyritex.netlink.rtnl.consts import *
-from pyritex.netlink.message import NetlinkHeaderTrait
-from pyritex.netlink.parsing import parse_peek, parse_full_message
+from ..log import logger
+from .consts import (
+    AF_NETLINK,
+    NLMSG_ALIGN,
+    NLMSG_DONE,
+    NLMSG_HDR_FORMAT,
+    NLMSG_HDR_SIZE
+)
+from .rtnl.consts import (
+    NDUSEROPT_MAX
+)
+from .message import NetlinkHeaderTrait
+from .parsing import parse_peek, parse_full_message
 
 
 class NetlinkSyncContextTrait(metaclass=Trait):
@@ -110,7 +118,7 @@ class ImplNetlinkSocket(NetlinkSocketTrait, metaclass=Impl, target="NetlinkSocke
 
         try:
             # Create and bind raw Netlink socket
-            raw_sock = std_socket.socket(AF_NETLINK, socket.SOCK_RAW, self.protocol)
+            raw_sock = std_socket.socket(AF_NETLINK, std_socket.SOCK_RAW, self.protocol)
             raw_sock.bind((0, 0))
 
             # Assign directly — no need to wrap in anyio stream
@@ -416,7 +424,7 @@ class ImplNetlinkSocket(NetlinkSocketTrait, metaclass=Impl, target="NetlinkSocke
 
 class ImplNetlinkSyncContext(NetlinkSyncContextTrait, metaclass=Impl, target="NetlinkSocket"):
     def __enter__(self):
-        self.sock = socket.socket(AF_NETLINK, socket.SOCK_RAW, self.protocol)
+        self.sock = std_socket.socket(AF_NETLINK, std_socket.SOCK_RAW, self.protocol)
         return self  # Allow `with NetlinkSocket() as pyr:`
 
     def __exit__(self, exc_type, exc_value, traceback):
@@ -430,7 +438,7 @@ class ImplNetlinkAsyncContext(NetlinkAsyncContextTrait, metaclass=Impl, target="
         await self._exit_stack.__aenter__()
 
         # Create and bind the raw Netlink socket
-        self.sock = socket.socket(AF_NETLINK, socket.SOCK_RAW, self.protocol)
+        self.sock = std_socket.socket(AF_NETLINK, std_socket.SOCK_RAW, self.protocol)
         self.sock.bind((0, 0))
         self._running = True
 
@@ -462,7 +470,7 @@ class NetlinkSocket(metaclass=Struct):
     """
 
     protocol: int
-    sock: Optional[socket.socket] = None
+    sock: Optional[std_socket.socket] = None
     tg: Optional[anyio.abc.TaskGroup] = None
     _running: bool = False
     _message_buffer: Optional[dict[int, list[bytes]]] = None

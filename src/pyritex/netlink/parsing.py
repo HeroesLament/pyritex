@@ -1,8 +1,8 @@
 from result import Ok, Err, Result
 from toolz.curried import pipe
 
-from pyritex import logger
-from pyritex.netlink.consts import *
+from ..log import logger
+from .consts import *
 
 def _unpack_header(raw: bytes) -> Result[tuple[int, int, int, int, int], str]:
     if len(raw) < NLMSG_HDR_SIZE:

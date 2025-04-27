@@ -11,8 +11,8 @@ from oxitrait.runtime import requires_traits
 
 from result import Result, Ok, Err
 
-from pyritex.netlink.consts import *
-from pyritex.netlink.rtnl.consts import *
+from .consts import *
+from .rtnl.consts import *
 
 #
 # -------------------------------------------------------------------
