@@ -1,32 +1,28 @@
-import anyio
-from anyio import move_on_after, create_memory_object_stream, create_task_group
-from anyio.abc import SocketStream
-
+# Standard Library
+from abc import abstractmethod
 from contextlib import AsyncExitStack
-
 import socket as std_socket
-
 from socket import SOCK_RAW
-
 import struct
+from typing import AsyncIterator, Iterator, Optional
 
+# Third-party
+import anyio
 import anyio.abc
 import anyio.streams
 import anyio.streams.memory
 import anyio.to_thread
+from anyio import move_on_after, create_memory_object_stream, create_task_group
+from anyio.abc import SocketStream
+from result import Result, Ok, Err
 from toolz.curried import pipe, map, filter, reduceby, concat, groupby, reduce
-from typing import AsyncIterator, Iterator, Optional
 
-
-from abc import abstractmethod
-
+# Internal
 from oxitrait.trait import Trait
 from oxitrait.impl import Impl
 from oxitrait.struct import Struct
 from oxitrait.enum import Enum, auto
 from oxitrait.runtime import requires_traits
-
-from result import Result, Ok, Err
 
 from ..log import logger
 from .consts import (
@@ -34,14 +30,13 @@ from .consts import (
     NLMSG_ALIGN,
     NLMSG_DONE,
     NLMSG_HDR_FORMAT,
-    NLMSG_HDR_SIZE
+    NLMSG_HDR_SIZE,
 )
 from .rtnl.consts import (
-    NDUSEROPT_MAX
+    NDUSEROPT_MAX,
 )
 from .message import NetlinkHeaderTrait
 from .parsing import parse_peek, parse_full_message
-
 
 class NetlinkSyncContextTrait(metaclass=Trait):
     @abstractmethod
