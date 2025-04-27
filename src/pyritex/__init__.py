@@ -7,7 +7,7 @@ from pyritex.netlink.message import RouteMessage
 from pyritex.netlink.message import NetlinkHeader
 from pyritex.netlink.message import RtMsg
 
-# Constants
+# Constants and Helpers
 from pyritex.netlink.consts import AF_INET
 from pyritex.netlink.consts import AF_NETLINK
 from pyritex.netlink.consts import AF_BRIDGE
@@ -333,6 +333,7 @@ from pyritex.netlink.rtnl.consts import RTNLGRP_MAX
 from pyritex.netlink.consts import NLMSG_ALIGN
 from pyritex.netlink.consts import NLMSG_LENGTH
 from pyritex.netlink.consts import NLMSG_SPACE
+from pyritex.log import set_pyritex_log_level
 
 __all__ = [
     "NetlinkSocket",
@@ -664,4 +665,5 @@ __all__ = [
     "NLMSG_ALIGN",
     "NLMSG_LENGTH",
     "NLMSG_SPACE",
+    "set_pyritex_log_level",
 ]

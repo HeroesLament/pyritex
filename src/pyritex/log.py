@@ -17,6 +17,6 @@ logging.Logger.trace = trace
 # Default: Logging is silent unless the user enables it
 logger.setLevel(logging.WARNING)
 
-def set_log_level(level=logging.DEBUG):
+def set_pyritex_log_level(level=logging.DEBUG):
     """Allows users to enable logging for Pyritex globally."""
     logger.setLevel(level)

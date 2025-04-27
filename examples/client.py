@@ -1,24 +1,38 @@
-import anyio
-import struct
+# Standard Library
 import logging
+import struct
 from abc import abstractmethod
-from typing import Any, Tuple, Optional
+from typing import Any, Optional, Tuple
 
+# Third-party
+import anyio
 from anyio import create_memory_object_stream
 from anyio.streams.memory import MemoryObjectReceiveStream, MemoryObjectSendStream
 from result import Result, Ok, Err
 
-from pyritex import NetlinkSocket, RouteMessage
-from pyritex.netlink.message import RtMsg, NetlinkHeader
-from pyritex.netlink.consts import *
-from pyritex.netlink.rtnl.consts import *
+# Internal
+import pyritex
+from pyritex import (
+    AF_INET,
+    NETLINK_ROUTE,
+    NetlinkHeader,
+    NetlinkSocket,
+    NLMSG_ALIGN,
+    RouteMessage,
+    RTA_DST,
+    RTA_GATEWAY,
+    RTA_OIF,
+    RTA_PREFSRC,
+    RT_TABLE_MAIN,
+    RtMsg,
+    set_pyritex_log_level,
+)
 
 from oxitrait.struct import Struct
 from oxitrait.trait import Trait
 from oxitrait.impl import Impl
 from oxitrait.runtime import requires_traits
 
-# --- Message types ---
 
 class RouteRequest:
     def __init__(self, reply_chan: MemoryObjectSendStream):

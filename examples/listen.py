@@ -1,9 +1,12 @@
-import anyio
+# Standard Library
 import struct
 import logging
 
+# Third-party
+import anyio
 from anyio import create_task_group
 
+# Internal
 import pyritex
 from pyritex import (
     NetlinkSocket,
@@ -12,7 +15,8 @@ from pyritex import (
     NLMSG_ALIGN,
     RTNLGRP_LINK,
     RTM_DELLINK,
-    RTM_NEWLINK
+    RTM_NEWLINK,
+    set_pyritex_log_level
 )
 
 logging.basicConfig(
@@ -20,7 +24,7 @@ logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
 )
 
-set_log_level(5)
+set_pyritex_log_level(5)
 
 def parse_ifname(attrs: list[tuple[int, bytes]]) -> str:
     for atype, data in attrs:

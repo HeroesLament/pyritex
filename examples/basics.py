@@ -1,28 +1,43 @@
-import anyio
+# Standard Library
 import logging
 import struct
 
+# Third-party
+import anyio
 from anyio import create_task_group
 from result import Result, Ok, Err
 from toolz.curried import pipe, map, filter, groupby
 
+# Internal
 from oxitrait.enum import Enum, auto
 from oxitrait.struct import Struct
 from oxitrait.impl import Impl
 from oxitrait.trait import Trait
 from oxitrait.runtime import requires_traits
 
-from pyritex import NetlinkSocket, RouteMessage, set_log_level
-from pyritex.netlink.message import RtMsg, NetlinkHeader
-from pyritex.netlink.consts import *
-from pyritex.netlink.rtnl.consts import *
+from pyritex import (
+    AF_INET,
+    NETLINK_ROUTE,
+    NetlinkHeader,
+    NetlinkSocket,
+    NLMSG_ALIGN,
+    RouteMessage,
+    RTA_DST,
+    RTA_GATEWAY,
+    RTA_OIF,
+    RTA_PREFSRC,
+    RT_TABLE_MAIN,
+    RtMsg,
+    set_pyritex_log_level,
+)
+
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
 )
 
-set_log_level(30)
+set_pyritex_log_level(30)
 
 def nlattr_stream(payload: bytes):
     """Yield (type, data) pairs from netlink attribute section."""
