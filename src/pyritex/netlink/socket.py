@@ -62,13 +62,6 @@ class NetlinkSocketTrait(metaclass=Trait):
         pass
 
     @abstractmethod
-    async def initialize(self, task_group) -> Result[None, str]:
-        """
-        Open/bind the socket, spawn any needed background tasks.
-        """
-        pass
-
-    @abstractmethod
     async def send_message(self, message: NetlinkHeaderTrait) -> Result[None, str]:
         """
         Serialize and send a netlink message.
@@ -104,40 +97,6 @@ class ImplNetlinkSocket(NetlinkSocketTrait, metaclass=Impl, target="NetlinkSocke
         send_chan, recv_chan = create_memory_object_stream(100)
         self.inbound_send = send_chan
         self.inbound_recv = recv_chan
-
-    async def initialize(self, task_group: anyio.abc.TaskGroup) -> Result[None, str]:
-        """
-        Initialize the netlink socket and spawn the _read_loop inside the provided task group.
-        The caller is responsible for managing the lifecycle of the task group.
-        """
-        logger.trace("Entering initialize()")
-
-        if self.sock is not None:
-            return Ok(None)  # Already initialized
-
-        try:
-            # Create and bind raw Netlink socket
-            proto: int = self.protocol
-            assert isinstance(proto, int)
-            assert isinstance(AF_NETLINK, int)
-            raw_sock = std_socket.socket(AF_NETLINK, SOCK_RAW, proto)
-            raw_sock.bind((0, 0))
-
-            # Assign directly — no need to wrap in anyio stream
-            self.sock = raw_sock
-
-            self._running = True
-            logger.debug(f"Is self running in initialize? Answer: {self._running}")
-
-            # Store and use provided task group to spawn background reader
-            self.tg = task_group
-            self.tg.start_soon(self._read_loop)
-
-            logger.trace("Exiting initialize()")
-            return Ok(None)
-
-        except Exception as e:
-            return Err(f"Failed to initialize socket: {e}")
 
     @staticmethod
     def _concat(fragments: list[bytes]) -> bytes:
@@ -183,9 +142,6 @@ class ImplNetlinkSocket(NetlinkSocketTrait, metaclass=Impl, target="NetlinkSocke
         """
         Send a serialized NetlinkMessage using a blocking system socket.
         """
-        if not self.sock:
-            return Err("Socket not initialized. Call initialize() first.")
-
         try:
             # Convert the message to bytes, if needed
             data = bytes(message)  # assuming message implements __bytes__()
@@ -200,10 +156,10 @@ class ImplNetlinkSocket(NetlinkSocketTrait, metaclass=Impl, target="NetlinkSocke
         Retrieve one Netlink message from the inbound queue, subject to timeout.
         """
         if not self.inbound_recv:
-            logger.error("Socket not initialized. inbound_recv channel is missing.")
-            return Err("Socket not initialized. inbound_recv channel is missing.")
+            logger.error("inbound_recv channel is missing.")
+            return Err("inbound_recv channel is missing.")
 
-        logger.debug("⏳ Entering receive_message(), waiting for a message...")
+        logger.debug("Entering receive_message(), waiting for a message...")
 
         with move_on_after(timeout) as cancel_scope:
             try:
@@ -226,9 +182,6 @@ class ImplNetlinkSocket(NetlinkSocketTrait, metaclass=Impl, target="NetlinkSocke
 
         This generator runs indefinitely until cancelled.
         """
-        if not self.sock:
-            raise RuntimeError("Socket not initialized. Call initialize() first.")
-
         if not getattr(self, "_multicast_bound", False):
             try:
                 group_mask = sum(1 << (g - 1) for g in groups)
@@ -278,7 +231,7 @@ class ImplNetlinkSocket(NetlinkSocketTrait, metaclass=Impl, target="NetlinkSocke
     async def _rx_chunks(self, sock):
         while True:
             try:
-                logger.trace("⛏ Calling sock.recv()")
+                logger.trace("Calling sock.recv()")
                 data = await anyio.to_thread.run_sync(sock.recv, 65536)
                 logger.trace(f"Got {len(data)} bytes from kernel")
                 yield data
