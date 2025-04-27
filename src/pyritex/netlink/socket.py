@@ -1,10 +1,11 @@
 # Standard Library
 from abc import abstractmethod
 from contextlib import AsyncExitStack
+from dataclasses import field
 import socket as std_socket
 from socket import SOCK_RAW
 import struct
-from typing import AsyncIterator, Iterator, Optional
+from typing import AsyncIterator, Iterator, List, Optional
 
 # Third-party
 import anyio
@@ -91,6 +92,7 @@ class ImplNetlinkSocket(NetlinkSocketTrait, metaclass=Impl, target="NetlinkSocke
     """
 
     def __post_init__(self):
+        self._group_mask = sum(1 << (g - 1) for g in self.groups)
         self.sock: Optional[std_socket.socket] = None
         self._message_buffer: dict[int, list[bytes]] = {}
     
@@ -176,22 +178,13 @@ class ImplNetlinkSocket(NetlinkSocketTrait, metaclass=Impl, target="NetlinkSocke
                 logger.exception("Exception while receiving from inbound channel")
                 return Err(e)
 
-    async def listen(self, groups: list[int]) -> AsyncIterator[tuple[dict, bytes]]:
+    async def listen(self) -> AsyncIterator[tuple[dict, bytes]]:
         """
-        Subscribes to given multicast groups and yields unsolicited Netlink messages.
+        Yield unsolicited Netlink messages (header, payload) as they arrive.
 
-        This generator runs indefinitely until cancelled.
+        Assumes multicast groups were already set via the `groups` field
+        and bound during __aenter__().
         """
-        if not getattr(self, "_multicast_bound", False):
-            try:
-                group_mask = sum(1 << (g - 1) for g in groups)
-                self.sock.bind((0, group_mask))
-                self._multicast_bound = True
-                logger.info(f"📡 Subscribed to groups: {groups} (mask={group_mask})")
-            except Exception as e:
-                logger.error(f"Failed to bind for multicast: {e}")
-                return  # silent fail — stops generator
-
         while self._running:
             try:
                 msg = await self.inbound_recv.receive()
@@ -399,11 +392,12 @@ class ImplNetlinkAsyncContext(NetlinkAsyncContextTrait, metaclass=Impl, target="
         await self._exit_stack.__aenter__()
 
         # Create and bind the raw Netlink socket
+        group_mask = getattr(self, "_group_mask", 0)
         proto: int = self.protocol
         assert isinstance(proto, int)
         assert isinstance(AF_NETLINK, int)
         self.sock = std_socket.socket(AF_NETLINK, SOCK_RAW, proto)
-        self.sock.bind((0, 0))
+        self.sock.bind((0, group_mask))
         self._running = True
 
         # Launch background read loop under managed task group
@@ -434,6 +428,7 @@ class NetlinkSocket(metaclass=Struct):
     """
 
     protocol: int
+    groups: List[int] = field(default_factory=list)
     sock: Optional[std_socket.socket] = None
     tg: Optional[anyio.abc.TaskGroup] = None
     _running: bool = False

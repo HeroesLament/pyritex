@@ -60,7 +60,7 @@ def parse_link_attrs(payload: bytes):
 
 async def main():
     async with create_task_group() as tg:
-        async with NetlinkSocket(protocol=NETLINK_ROUTE) as pyr:
+        async with NetlinkSocket(protocol=NETLINK_ROUTE, groups=[RTNLGRP_LINK]) as pyr:
             async for hdr, payload in pyr.listen([RTNLGRP_LINK]):
                 msg_type = hdr["type"]
 
