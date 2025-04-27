@@ -5,11 +5,15 @@ from anyio.abc import SocketStream
 from contextlib import AsyncExitStack
 
 import socket as std_socket
+
+from socket import SOCK_RAW
+
 import struct
 
 import anyio.abc
 import anyio.streams
 import anyio.streams.memory
+import anyio.to_thread
 from toolz.curried import pipe, map, filter, reduceby, concat, groupby, reduce
 from typing import AsyncIterator, Iterator, Optional
 
@@ -118,7 +122,10 @@ class ImplNetlinkSocket(NetlinkSocketTrait, metaclass=Impl, target="NetlinkSocke
 
         try:
             # Create and bind raw Netlink socket
-            raw_sock = std_socket.socket(AF_NETLINK, std_socket.SOCK_RAW, self.protocol)
+            proto: int = self.protocol
+            assert isinstance(proto, int)
+            assert isinstance(AF_NETLINK, int)
+            raw_sock = std_socket.socket(AF_NETLINK, SOCK_RAW, proto)
             raw_sock.bind((0, 0))
 
             # Assign directly — no need to wrap in anyio stream
@@ -150,25 +157,25 @@ class ImplNetlinkSocket(NetlinkSocketTrait, metaclass=Impl, target="NetlinkSocke
         return len(f) >= NLMSG_HDR_SIZE
 
     async def _dispatch(self, fragments: list[bytes]):
-        logger.debug(f"🔧 _dispatch called with {len(fragments)} fragment(s)")
+        logger.debug(f"_dispatch called with {len(fragments)} fragment(s)")
 
         def log_and_parse(raw: bytes):
-            logger.debug(f"🧪 Raw message length: {len(raw)} bytes")
-            logger.debug(f"🧪 Raw bytes (first 32): {raw[:32].hex()}")
+            logger.debug(f"Raw message length: {len(raw)} bytes")
+            logger.debug(f"Raw bytes (first 32): {raw[:32].hex()}")
             result = parse_full_message(raw)
-            logger.debug("📞 Called parse_full_message()")
+            logger.debug("Called parse_full_message()")
             if result.is_ok():
-                logger.debug("✅ parse_full_message returned Ok")
+                logger.debug("parse_full_message returned Ok")
             else:
-                logger.error(f"❌ parse_full_message returned Err: {result.unwrap_err()}")
+                logger.error(f"parse_full_message returned Err: {result.unwrap_err()}")
             return result
 
         async def send_if_ok(result):
             if result.is_ok():
-                logger.debug("📨 Sending message to inbound channel")
+                logger.debug("Sending message to inbound channel")
                 await self.inbound_send.send(result.unwrap())
             else:
-                logger.error(f"⛔ Not sending, result was Err: {result.unwrap_err()}")
+                logger.error(f"Not sending, result was Err: {result.unwrap_err()}")
 
         return await pipe(
             fragments,
@@ -198,7 +205,7 @@ class ImplNetlinkSocket(NetlinkSocketTrait, metaclass=Impl, target="NetlinkSocke
         Retrieve one Netlink message from the inbound queue, subject to timeout.
         """
         if not self.inbound_recv:
-            logger.error("❌ Socket not initialized. inbound_recv channel is missing.")
+            logger.error("Socket not initialized. inbound_recv channel is missing.")
             return Err("Socket not initialized. inbound_recv channel is missing.")
 
         logger.debug("⏳ Entering receive_message(), waiting for a message...")
@@ -208,14 +215,14 @@ class ImplNetlinkSocket(NetlinkSocketTrait, metaclass=Impl, target="NetlinkSocke
                 msg = await self.inbound_recv.receive()
 
                 if cancel_scope.cancelled_caught:
-                    logger.warning("⌛ receive_message() timed out waiting for a message")
+                    logger.warning("receive_message() timed out waiting for a message")
                     return Err("Timeout occurred waiting for Netlink message.")
 
-                logger.debug("🎉 Message received in receive_message()")
+                logger.debug("Message received in receive_message()")
                 return Ok(msg)
 
             except Exception as e:
-                logger.exception("💥 Exception while receiving from inbound channel")
+                logger.exception("Exception while receiving from inbound channel")
                 return Err(e)
 
     async def listen(self, groups: list[int]) -> AsyncIterator[tuple[dict, bytes]]:
@@ -278,11 +285,11 @@ class ImplNetlinkSocket(NetlinkSocketTrait, metaclass=Impl, target="NetlinkSocke
             try:
                 logger.trace("⛏ Calling sock.recv()")
                 data = await anyio.to_thread.run_sync(sock.recv, 65536)
-                logger.trace(f"📦 Got {len(data)} bytes from kernel")
+                logger.trace(f"Got {len(data)} bytes from kernel")
                 yield data
             except OSError as e:
                 if self._running:
-                    logger.warning(f"⚠️ Netlink recv OSError: {e}")
+                    logger.warning(f"Netlink recv OSError: {e}")
                 break
             except anyio.get_cancelled_exc_class():
                 break
@@ -349,7 +356,7 @@ class ImplNetlinkSocket(NetlinkSocketTrait, metaclass=Impl, target="NetlinkSocke
         return len(raw) >= NLMSG_HDR_SIZE
 
     async def _read_loop(self):
-        logger.trace("🔁 Starting Netlink read loop")
+        logger.trace("Starting Netlink read loop")
 
         async for chunk in self._rx_chunks(self.sock):
             logger.debug(f"📥 Received {len(chunk)} bytes from socket")
@@ -360,15 +367,15 @@ class ImplNetlinkSocket(NetlinkSocketTrait, metaclass=Impl, target="NetlinkSocke
                     self.split_frames,
                     filter(self._is_valid_chunk),
                     map(self.parse_header),
-                    filter(self._is_ok),
-                    map(self._unwrap),
+                    filter(self.is_ok),
+                    map(self.unwrap),
                 )
             except Exception as e:
-                logger.exception("💥 Exception during frame processing")
+                logger.exception("Exception during frame processing")
                 continue
 
             frame_list = list(frames)  # materialize for logging & reuse
-            logger.debug(f"🧱 Extracted {len(frame_list)} valid frame(s) from chunk")
+            logger.debug(f"Extracted {len(frame_list)} valid frame(s) from chunk")
 
             try:
                 by_seq = pipe(
@@ -376,46 +383,37 @@ class ImplNetlinkSocket(NetlinkSocketTrait, metaclass=Impl, target="NetlinkSocke
                     groupby(self._by_seq_key),
                 )
             except Exception as e:
-                logger.exception("💥 Exception during sequence grouping")
+                logger.exception("Exception during sequence grouping")
                 continue
 
-            logger.debug(f"🧮 Grouped into {len(by_seq)} sequence(s): {list(by_seq.keys())}")
+            logger.debug(f"Grouped into {len(by_seq)} sequence(s): {list(by_seq.keys())}")
 
             for seq, group in by_seq.items():
-                logger.debug(f"🧵 Processing seq {seq} with {len(group)} message(s)")
+                logger.debug(f"Processing seq {seq} with {len(group)} message(s)")
 
                 if seq not in self._message_buffer:
-                    logger.debug(f"📦 Creating new buffer for seq {seq}")
+                    logger.debug(f"Creating new buffer for seq {seq}")
                     self._message_buffer[seq] = []
 
                 seen_done = False
 
                 for hdr, full_frame in group:
-                    logger.debug(f"  ↪️ Msg type={hdr['type']} len={hdr['len']} pid={hdr['pid']}")
+                    logger.debug(f"Msg type={hdr['type']} len={hdr['len']} pid={hdr['pid']}")
                     self._message_buffer[seq].append(full_frame)
 
                     if hdr["type"] == NLMSG_DONE:
                         seen_done = True
-                        logger.debug(f"✅ Detected NLMSG_DONE in seq {seq}")
+                        logger.debug(f"Detected NLMSG_DONE in seq {seq}")
 
                 if seen_done:
                     fragments = self._message_buffer.pop(seq)
-                    logger.debug(f"🚀 Dispatching {len(fragments)} buffered frame(s) for seq {seq}")
+                    logger.debug(f"Dispatching {len(fragments)} buffered frame(s) for seq {seq}")
                     try:
                         await self._dispatch(fragments)
                     except Exception as e:
-                        logger.exception(f"💥 Exception during dispatch of seq {seq}")
+                        logger.exception(f"Exception during dispatch of seq {seq}")
 
-            logger.trace("⏳ Waiting for next Netlink message...")
-
-    # FP-friendly helpers
-    @staticmethod
-    def _is_ok(result):
-        return result.is_ok()
-
-    @staticmethod
-    def _unwrap(result):
-        return result.unwrap()
+            logger.trace("Waiting for next Netlink message...")
 
     @staticmethod
     def _by_seq_key(tpl):
@@ -424,7 +422,10 @@ class ImplNetlinkSocket(NetlinkSocketTrait, metaclass=Impl, target="NetlinkSocke
 
 class ImplNetlinkSyncContext(NetlinkSyncContextTrait, metaclass=Impl, target="NetlinkSocket"):
     def __enter__(self):
-        self.sock = std_socket.socket(AF_NETLINK, std_socket.SOCK_RAW, self.protocol)
+        proto: int = self.protocol
+        assert isinstance(proto, int)
+        assert isinstance(AF_NETLINK, int)
+        self.sock = std_socket.socket(AF_NETLINK, SOCK_RAW, proto)
         return self  # Allow `with NetlinkSocket() as pyr:`
 
     def __exit__(self, exc_type, exc_value, traceback):
@@ -438,7 +439,10 @@ class ImplNetlinkAsyncContext(NetlinkAsyncContextTrait, metaclass=Impl, target="
         await self._exit_stack.__aenter__()
 
         # Create and bind the raw Netlink socket
-        self.sock = std_socket.socket(AF_NETLINK, std_socket.SOCK_RAW, self.protocol)
+        proto: int = self.protocol
+        assert isinstance(proto, int)
+        assert isinstance(AF_NETLINK, int)
+        self.sock = std_socket.socket(AF_NETLINK, SOCK_RAW, proto)
         self.sock.bind((0, 0))
         self._running = True
 
