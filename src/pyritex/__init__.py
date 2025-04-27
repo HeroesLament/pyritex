@@ -330,6 +330,9 @@ from pyritex.netlink.rtnl.consts import RTNLGRP_PHONET_IFADDR
 from pyritex.netlink.rtnl.consts import RTNLGRP_PHONET_ROUTE
 from pyritex.netlink.rtnl.consts import __RTNLGRP_MAX
 from pyritex.netlink.rtnl.consts import RTNLGRP_MAX
+from pyritex.netlink.consts import NLMSG_ALIGN
+from pyritex.netlink.consts import NLMSG_LENGTH
+from pyritex.netlink.consts import NLMSG_SPACE
 
 __all__ = [
     "NetlinkSocket",
@@ -658,4 +661,7 @@ __all__ = [
     "RTNLGRP_PHONET_ROUTE",
     "__RTNLGRP_MAX",
     "RTNLGRP_MAX",
+    "NLMSG_ALIGN",
+    "NLMSG_LENGTH",
+    "NLMSG_SPACE",
 ]

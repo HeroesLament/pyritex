@@ -3,9 +3,17 @@ import struct
 import logging
 
 from anyio import create_task_group
-from pyritex import NetlinkSocket, set_log_level
-from pyritex.netlink.consts import *
-from pyritex.netlink.rtnl.consts import *
+
+import pyritex
+from pyritex import (
+    NetlinkSocket,
+    IFLA_IFNAME,
+    NETLINK_ROUTE,
+    NLMSG_ALIGN,
+    RTNLGRP_LINK,
+    RTM_DELLINK,
+    RTM_NEWLINK
+)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -62,8 +70,8 @@ async def main():
 
                 ifname = parse_ifname(parsed["attrs"])
                 if msg_type == RTM_NEWLINK:
-                    print(f"🔌 Interface UP: {ifname}")
+                    print(f" Interface UP: {ifname}")
                 elif msg_type == RTM_DELLINK:
-                    print(f"📴 Interface DOWN: {ifname}")
+                    print(f" Interface DOWN: {ifname}")
 
 anyio.run(main)
