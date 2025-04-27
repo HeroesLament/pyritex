@@ -231,7 +231,11 @@ class ImplNetlinkSocket(NetlinkSocketTrait, metaclass=Impl, target="NetlinkSocke
     async def _rx_chunks(self, sock):
         while True:
             try:
-                logger.trace("Calling sock.recv()")
+                logger.trace("Entering _rx_chunks")
+                while sock is None:
+                    logger.trace("Waiting for socket to be available")
+                    await anyio.sleep(0.01)
+                    sock = self.sock
                 data = await anyio.to_thread.run_sync(sock.recv, 65536)
                 logger.trace(f"Got {len(data)} bytes from kernel")
                 yield data
