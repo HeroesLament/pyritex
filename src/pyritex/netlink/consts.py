@@ -360,7 +360,7 @@ NLMSG_MAX_LEN = 0xFFFF
 
 # Netlink header misc
 NLMSG_HDR_FORMAT = "IHHII"   # length (I), type (H), flags (H), sequence (I)
-NLMSG_HDR_SIZE   = getattr(struct.calcsize(NLMSG_HDR_FORMAT), 16)
+NLMSG_HDR_SIZE = struct.calcsize(NLMSG_HDR_FORMAT)
 
 # Miscellaneous
 SOL_NETLINK = 270

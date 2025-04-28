@@ -76,18 +76,19 @@ class NetlinkMessagePayloadTrait(metaclass=Trait):
     """
     Trait for payloads that can be parsed from Netlink raw payload bytes.
     """
-    @classmethod
-    @abstractmethod
-    def parse_from(cls: Type[T], payload: bytes) -> Result[T, str]:
-        """
-        Parse from bytes into an instance of the same payload type.
-        """
-        pass
 
     @abstractmethod
     def to_bytes(self) -> Result[bytes, str]:
         """
         Serialize the payload back to bytes.
+        """
+        pass
+
+    @abstractmethod
+    def parse_from(cls, payload: bytes) -> Result["NetlinkMessagePayloadTrait", str]:
+        """
+        Parse payload bytes into an instance.
+        Note: implementors should decorate this with @classmethod themselves.
         """
         pass
 
@@ -231,11 +232,10 @@ class ImplRtMsg(RtMsgTrait, metaclass=Impl, target="RtMsg"):
 
 class ImplRtMsgPayload(NetlinkMessagePayloadTrait, metaclass=Impl, target="RtMsg"):
     """
-    Implementation of NetlinkPayloadTrait for RtMsg Struct.
+    Implementation of NetlinkMessagePayloadTrait for RtMsg Struct.
     """
 
-    @classmethod
-    def parse_from(cls, payload: bytes) -> Result["RtMsg", str]:
+    def parse_from(self, payload: bytes) -> Result["RtMsg", str]:
         try:
             family, table = struct.unpack("BB", payload[:2])
             return Ok(RtMsg(family=family, table=table))
@@ -248,6 +248,7 @@ class ImplRtMsgPayload(NetlinkMessagePayloadTrait, metaclass=Impl, target="RtMsg
             return Ok(packed)
         except struct.error as e:
             return Err(f"RtMsg pack error: {e}")
+
 
 
 class ImplRouteMessage(RouteMessageTrait, metaclass=Impl, target="RouteMessage"):

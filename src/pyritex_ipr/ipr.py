@@ -52,7 +52,6 @@ class LinkState(metaclass=Enum):
     DOWN = auto()
     UNKNOWN = auto()
 
-
 # ========== Structs ==========
 
 class Link(metaclass=Struct):
@@ -72,8 +71,15 @@ class IPRouteClientTrait(metaclass=Trait):
         Returns Ok(list_of_links) on success, or Err(error_message) on failure.
         """
 
+class LinkTrait(metaclass=Trait):
+    def index(self):
+        pass
+
 
 # ========== Implementation ==========
+class ImplLink(LinkTrait, metaclass=Impl, target="Link"):
+    def index(self):
+        return self.index
 
 class ImplIPRouteClient(IPRouteClientTrait, metaclass=Impl, target="IPRouteClient"):
     async def link_get(self) -> Result[List[Link], IPRouteError]:
@@ -216,5 +222,5 @@ class ImplIPRouteClient(IPRouteClientTrait, metaclass=Impl, target="IPRouteClien
 
 # ========== Public Struct ==========
 
-class IPRouteClient(Struct):
+class IPRouteClient(metaclass=Struct):
     sock: NetlinkSocket

@@ -1,6 +1,19 @@
 import anyio
+from typing import List
+
+from oxitrait.enum import Enum, auto
+from oxitrait.struct import Struct
+from oxitrait.impl import Impl
+from oxitrait.trait import Trait
+from oxitrait.runtime import requires_traits
+
 from pyritex import NetlinkSocket
-from pyritex_ipr.ipr import IPRouteClient, LinkState
+from pyritex_ipr import (
+    IPRouteClient,
+    IPRouteError,
+    LinkState,
+    Link
+)
 
 async def main():
     async with NetlinkSocket() as sock:
@@ -9,7 +22,7 @@ async def main():
         result = await ipr.link_get()
 
         if result.is_ok():
-            links = result.unwrap()
+            links: List[Link] = result.unwrap()
             for link in links:
                 if link.state == LinkState.UP:
                     print(f"[UP]   {link.name} (index {link.index})")
