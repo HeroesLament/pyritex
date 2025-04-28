@@ -1,8 +1,14 @@
+import struct
+
 from result import Ok, Err, Result
 from toolz.curried import pipe
 
 from ..log import logger
-from .consts import *
+from .message import NetlinkHeader, NetlinkMessage
+from .consts import (
+    NLMSG_HDR_SIZE,
+    NLMSG_HDR_FORMAT
+)
 
 def _unpack_header(raw: bytes) -> Result[tuple[int, int, int, int, int], str]:
     if len(raw) < NLMSG_HDR_SIZE:
@@ -12,7 +18,6 @@ def _unpack_header(raw: bytes) -> Result[tuple[int, int, int, int, int], str]:
     except Exception as e:
         return Err(f"Unpack failed: {e}")
 
-
 def _validate_len(nlmsg_len: int, buf_len: int) -> Result[int, str]:
     if nlmsg_len < NLMSG_HDR_SIZE:
         return Err(f"Invalid Netlink length: {nlmsg_len} < header size")
@@ -20,27 +25,27 @@ def _validate_len(nlmsg_len: int, buf_len: int) -> Result[int, str]:
         return Err(f"Netlink length {nlmsg_len} exceeds buffer length {buf_len}")
     return Ok(nlmsg_len)
 
+def _build_message(hdr: tuple[int, int, int, int, int], raw: bytes) -> NetlinkMessage:
+    ln, ty, fl, seq, pid = hdr
+    return NetlinkMessage(
+        header=NetlinkHeader(
+            nlmsg_len=ln,
+            nlmsg_type=ty,
+            nlmsg_flags=fl,
+            nlmsg_seq=seq,
+            nlmsg_pid=pid,
+        ),
+        payload=raw[NLMSG_HDR_SIZE:ln],
+    )
 
-def _build_dict(parsed: tuple[int, int, int, int, int], raw: bytes) -> dict:
-    ln, ty, fl, seq, pid = parsed
-    return {
-        "len": ln,
-        "type": ty,
-        "flags": fl,
-        "seq": seq,
-        "pid": pid,
-        "payload": raw[NLMSG_HDR_SIZE:ln],
-    }
-
-
-def parse_full_message(raw: bytes) -> Result[dict, str]:
+def parse_full_message(raw: bytes) -> Result[NetlinkMessage, str]:
     return pipe(
         raw,
         _unpack_header,                                       # → Result[(ln, ty, fl, seq, pid)]
         lambda r: r.and_then(lambda hdr:                      # Validate length
             _validate_len(hdr[0], len(raw)).map(lambda _: hdr)
         ),
-        lambda r: r.map(lambda hdr: _build_dict(hdr, raw))    # Build parsed dict
+        lambda r: r.map(lambda hdr: _build_message(hdr, raw))    # Build parsed dict
     )
 
 def parse_peek(data: bytes, offset: int) -> Result[tuple[int, dict], str]:

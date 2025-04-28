@@ -1,4 +1,3 @@
-# netlink/rtnl/consts.py
 #
 # Python equivalents of various RTNETLINK constants and macros
 # extracted from linux/rtnetlink.h

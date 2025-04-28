@@ -1,5 +1,5 @@
 import struct
-from typing import Optional
+from typing import Optional, Type, TypeVar
 
 from abc import abstractmethod
 
@@ -13,6 +13,9 @@ from result import Result, Ok, Err
 
 from .consts import *
 from .rtnl.consts import *
+
+T = TypeVar("T", bound="NetlinkHeaderTrait")
+U = TypeVar("U", bound="NetlinkMessagePayloadTrait")
 
 #
 # -------------------------------------------------------------------
@@ -53,6 +56,38 @@ class NetlinkHeaderTrait(metaclass=Trait):
     def to_bytes(self) -> Result[bytes, str]:
         """
         Serialize the netlink header to 16 bytes, returning a Result.
+        """
+        pass
+
+
+class NetlinkMessageTrait(metaclass=Trait):
+    """
+    Trait describing behaviors of a full NetlinkMessage.
+    """
+    @abstractmethod
+    def to_bytes(self) -> Result[bytes, str]:
+        """
+        Serialize the full message (header + payload) into bytes.
+        """
+        pass
+
+
+class NetlinkMessagePayloadTrait(metaclass=Trait):
+    """
+    Trait for payloads that can be parsed from Netlink raw payload bytes.
+    """
+    @classmethod
+    @abstractmethod
+    def parse_from(cls: Type[T], payload: bytes) -> Result[T, str]:
+        """
+        Parse from bytes into an instance of the same payload type.
+        """
+        pass
+
+    @abstractmethod
+    def to_bytes(self) -> Result[bytes, str]:
+        """
+        Serialize the payload back to bytes.
         """
         pass
 
@@ -149,6 +184,26 @@ class ImplNetlinkHeader(NetlinkHeaderTrait, metaclass=Impl, target="NetlinkHeade
             return Err(f"Header pack error: {e}")
 
 
+class ImplNetlinkMessage(NetlinkMessageTrait, metaclass=Impl, target="NetlinkMessage"):
+    """
+    Implementation of NetlinkMessageTrait for NetlinkMessage Struct.
+    """
+
+    def to_bytes(self: "NetlinkMessage[T, U]") -> Result[bytes, str]:
+        header_bytes_result = self.header.to_bytes()
+        if header_bytes_result.is_err():
+            return header_bytes_result
+
+        payload_bytes_result = self.payload.to_bytes()
+        if payload_bytes_result.is_err():
+            return payload_bytes_result
+
+        header_bytes = header_bytes_result.unwrap()
+        payload_bytes = payload_bytes_result.unwrap()
+
+        return Ok(header_bytes + payload_bytes)
+
+
 class ImplRtMsg(RtMsgTrait, metaclass=Impl, target="RtMsg"):
     """
     Implementation of route header logic for RtMsg.
@@ -172,6 +227,27 @@ class ImplRtMsg(RtMsgTrait, metaclass=Impl, target="RtMsg"):
 
     def __post_init__(self):
         pass
+
+
+class ImplRtMsgPayload(NetlinkMessagePayloadTrait, metaclass=Impl, target="RtMsg"):
+    """
+    Implementation of NetlinkPayloadTrait for RtMsg Struct.
+    """
+
+    @classmethod
+    def parse_from(cls, payload: bytes) -> Result["RtMsg", str]:
+        try:
+            family, table = struct.unpack("BB", payload[:2])
+            return Ok(RtMsg(family=family, table=table))
+        except struct.error as e:
+            return Err(f"RtMsg parse error: {e}")
+
+    def to_bytes(self) -> Result[bytes, str]:
+        try:
+            packed = struct.pack("BB", self.family, self.table)
+            return Ok(packed)
+        except struct.error as e:
+            return Err(f"RtMsg pack error: {e}")
 
 
 class ImplRouteMessage(RouteMessageTrait, metaclass=Impl, target="RouteMessage"):
@@ -297,3 +373,20 @@ class RouteMessage(metaclass=Struct):
             self.header.nlmsg_pid = 0
         self.header.nlmsg_type = self.nlmsg_type()
         self.header.nlmsg_flags = self.nlmsg_flags()
+
+@requires_traits(payload=NetlinkMessagePayloadTrait)
+class NetlinkMessage(metaclass=Struct):
+    """
+    A Struct representing a fully received Netlink message:
+      - header: Parsed NetlinkHeader
+      - payload: Raw payload bytes (excluding header)
+
+    Produced by parsing raw received bytes from the socket.
+    """
+
+    header: NetlinkHeader
+    payload: object
+
+    def __post_init__(self):
+        if self.payload is None:
+            self.payload = b""

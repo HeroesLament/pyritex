@@ -5,20 +5,199 @@
 from pyritex.netlink.socket import NetlinkSocket
 from pyritex.netlink.message import RouteMessage
 from pyritex.netlink.message import NetlinkHeader
+from pyritex.netlink.message import NetlinkMessage
 from pyritex.netlink.message import RtMsg
 
 # Constants and Helpers
+from pyritex.netlink.consts import AF_UNSPEC
 from pyritex.netlink.consts import AF_INET
 from pyritex.netlink.consts import AF_NETLINK
 from pyritex.netlink.consts import AF_BRIDGE
-from pyritex.netlink.consts import IFLA_IFNAME
+from pyritex.netlink.consts import AF_UNIX
+from pyritex.netlink.consts import AF_LOCAL
+from pyritex.netlink.consts import AF_AX25
+from pyritex.netlink.consts import AF_IPX
+from pyritex.netlink.consts import AF_APPLETALK
+from pyritex.netlink.consts import AF_NETROM
+from pyritex.netlink.consts import AF_ATMPVC
+from pyritex.netlink.consts import AF_X25
+from pyritex.netlink.consts import AF_INET6
+from pyritex.netlink.consts import AF_ROSE
+from pyritex.netlink.consts import AF_DECNET
+from pyritex.netlink.consts import AF_NETBEUI
+from pyritex.netlink.consts import AF_SECURITY
+from pyritex.netlink.consts import AF_KEY
+from pyritex.netlink.consts import AF_PACKET
+from pyritex.netlink.consts import AF_ASH
+from pyritex.netlink.consts import AF_ECONET
+from pyritex.netlink.consts import AF_ATMSVC
+from pyritex.netlink.consts import AF_RDS
+from pyritex.netlink.consts import AF_SNA
+from pyritex.netlink.consts import AF_IRDA
+from pyritex.netlink.consts import AF_PPPOX
+from pyritex.netlink.consts import AF_WANPIPE
+from pyritex.netlink.consts import AF_LLC
+from pyritex.netlink.consts import AF_IB
+from pyritex.netlink.consts import AF_MPLS
+from pyritex.netlink.consts import AF_CAN
+from pyritex.netlink.consts import AF_TIPC
+from pyritex.netlink.consts import AF_BLUETOOTH
+from pyritex.netlink.consts import AF_IUCV
+from pyritex.netlink.consts import AF_RXRPC
+from pyritex.netlink.consts import AF_ISDN
+from pyritex.netlink.consts import AF_PHONET
+from pyritex.netlink.consts import AF_IEEE802154
+from pyritex.netlink.consts import AF_CAIF
+from pyritex.netlink.consts import AF_ALG
+from pyritex.netlink.consts import AF_NFC
+from pyritex.netlink.consts import AF_VSOCK
+from pyritex.netlink.consts import AF_KCM
+from pyritex.netlink.consts import AF_QIPCRTR
+from pyritex.netlink.consts import AF_SMC
+from pyritex.netlink.consts import AF_XDP
+from pyritex.netlink.consts import AF_MCTP
+from pyritex.netlink.consts import AF_MAX
+from pyritex.netlink.consts import PF_UNSPEC
+from pyritex.netlink.consts import PF_UNIX
+from pyritex.netlink.consts import PF_LOCAL
+from pyritex.netlink.consts import PF_INET
+from pyritex.netlink.consts import PF_AX25
+from pyritex.netlink.consts import PF_IPX
+from pyritex.netlink.consts import PF_APPLETALK
+from pyritex.netlink.consts import PF_NETROM
+from pyritex.netlink.consts import PF_BRIDGE
+from pyritex.netlink.consts import PF_ATMPVC
+from pyritex.netlink.consts import PF_X25
+from pyritex.netlink.consts import PF_INET6
+from pyritex.netlink.consts import PF_ROSE
+from pyritex.netlink.consts import PF_DECNET
+from pyritex.netlink.consts import PF_NETBEUI
+from pyritex.netlink.consts import PF_SECURITY
+from pyritex.netlink.consts import PF_KEY
+from pyritex.netlink.consts import PF_NETLINK
+from pyritex.netlink.consts import PF_ROUTE
+from pyritex.netlink.consts import PF_PACKET
+from pyritex.netlink.consts import PF_ASH
+from pyritex.netlink.consts import PF_ECONET
+from pyritex.netlink.consts import PF_ATMSVC
+from pyritex.netlink.consts import PF_RDS
+from pyritex.netlink.consts import PF_SNA
+from pyritex.netlink.consts import PF_IRDA
+from pyritex.netlink.consts import PF_PPPOX
+from pyritex.netlink.consts import PF_WANPIPE
+from pyritex.netlink.consts import PF_LLC
+from pyritex.netlink.consts import PF_IB
+from pyritex.netlink.consts import PF_MPLS
+from pyritex.netlink.consts import PF_CAN
+from pyritex.netlink.consts import PF_TIPC
+from pyritex.netlink.consts import PF_BLUETOOTH
+from pyritex.netlink.consts import PF_IUCV
+from pyritex.netlink.consts import PF_RXRPC
+from pyritex.netlink.consts import PF_ISDN
+from pyritex.netlink.consts import PF_PHONET
+from pyritex.netlink.consts import PF_IEEE802154
+from pyritex.netlink.consts import PF_CAIF
+from pyritex.netlink.consts import PF_ALG
+from pyritex.netlink.consts import PF_NFC
+from pyritex.netlink.consts import PF_VSOCK
+from pyritex.netlink.consts import PF_KCM
+from pyritex.netlink.consts import PF_QIPCRTR
+from pyritex.netlink.consts import PF_SMC
+from pyritex.netlink.consts import PF_XDP
+from pyritex.netlink.consts import PF_MCTP
+from pyritex.netlink.consts import PF_MAX
 from pyritex.netlink.consts import IFF_LOWER_UP
 from pyritex.netlink.consts import IFF_DORMANT
+from pyritex.netlink.consts import IFLA_UNSPEC
+from pyritex.netlink.consts import IFLA_ADDRESS
+from pyritex.netlink.consts import IFLA_BROADCAST
+from pyritex.netlink.consts import IFLA_IFNAME
+from pyritex.netlink.consts import IFLA_MTU
+from pyritex.netlink.consts import IFLA_LINK
+from pyritex.netlink.consts import IFLA_QDISC
+from pyritex.netlink.consts import IFLA_STATS
+from pyritex.netlink.consts import IFLA_COST
+from pyritex.netlink.consts import IFLA_PRIORITY
+from pyritex.netlink.consts import IFLA_MASTER
 from pyritex.netlink.consts import IFLA_WIRELESS
+from pyritex.netlink.consts import IFLA_PROTINFO
+from pyritex.netlink.consts import IFLA_TXQLEN
+from pyritex.netlink.consts import IFLA_MAP
+from pyritex.netlink.consts import IFLA_WEIGHT
 from pyritex.netlink.consts import IFLA_OPERSTATE
 from pyritex.netlink.consts import IFLA_LINKMODE
+from pyritex.netlink.consts import IFLA_LINKINFO
+from pyritex.netlink.consts import IFLA_NET_NS_PID
+from pyritex.netlink.consts import IFLA_IFALIAS
+from pyritex.netlink.consts import IFLA_NUM_VF
+from pyritex.netlink.consts import IFLA_VFINFO_LIST
+from pyritex.netlink.consts import IFLA_STATS64
+from pyritex.netlink.consts import IFLA_VF_PORTS
+from pyritex.netlink.consts import IFLA_PORT_SELF
+from pyritex.netlink.consts import IFLA_AF_SPEC
+from pyritex.netlink.consts import IFLA_GROUP
+from pyritex.netlink.consts import IFLA_NET_NS_FD
+from pyritex.netlink.consts import IFLA_EXT_MASK
+from pyritex.netlink.consts import IFLA_PROMISCUITY
+from pyritex.netlink.consts import IFLA_NUM_TX_QUEUES
+from pyritex.netlink.consts import IFLA_NUM_RX_QUEUES
+from pyritex.netlink.consts import IFLA_CARRIER
+from pyritex.netlink.consts import IFLA_PHYS_PORT_ID
+from pyritex.netlink.consts import IFLA_CARRIER_CHANGES
+from pyritex.netlink.consts import IFLA_PHYS_SWITCH_ID
+from pyritex.netlink.consts import IFLA_LINK_NETNSID
+from pyritex.netlink.consts import IFLA_PHYS_PORT_NAME
+from pyritex.netlink.consts import IFLA_PROTO_DOWN
+from pyritex.netlink.consts import IFLA_GSO_MAX_SEGS
+from pyritex.netlink.consts import IFLA_GSO_MAX_SIZE
+from pyritex.netlink.consts import IFLA_PAD
+from pyritex.netlink.consts import IFLA_XDP
+from pyritex.netlink.consts import IFLA_EVENT
+from pyritex.netlink.consts import IFLA_NEW_NETNSID
+from pyritex.netlink.consts import IFLA_IF_NETNSID
+from pyritex.netlink.consts import IFLA_CARRIER_UP_COUNT
+from pyritex.netlink.consts import IFLA_CARRIER_DOWN_COUNT
+from pyritex.netlink.consts import IFLA_NEW_IFINDEX
+from pyritex.netlink.consts import IFLA_MIN_MTU
+from pyritex.netlink.consts import IFLA_MAX_MTU
+from pyritex.netlink.consts import IFLA_PROP_LIST
+from pyritex.netlink.consts import IFLA_ALT_IFNAME
+from pyritex.netlink.consts import IFLA_PERM_ADDRESS
+from pyritex.netlink.consts import IFLA_PROTO_DOWN_REASON
+from pyritex.netlink.consts import IFLA_MAX
+from pyritex.netlink.consts import IF_OPER_UNKNOWN
+from pyritex.netlink.consts import IF_OPER_NOTPRESENT
+from pyritex.netlink.consts import IF_OPER_DOWN
+from pyritex.netlink.consts import IF_OPER_LOWERLAYERDOWN
+from pyritex.netlink.consts import IF_OPER_TESTING
 from pyritex.netlink.consts import IF_OPER_DORMANT
 from pyritex.netlink.consts import IF_OPER_UP
+from pyritex.netlink.consts import LINK_XSTATS_TYPE_UNSPEC
+from pyritex.netlink.consts import LINK_XSTATS_TYPE_BRIDGE
+from pyritex.netlink.consts import LINK_XSTATS_TYPE_BOND
+from pyritex.netlink.consts import LINK_XSTATS_TYPE_MAX
+from pyritex.netlink.consts import XDP_ATTACHED_NONE
+from pyritex.netlink.consts import XDP_ATTACHED_DRV
+from pyritex.netlink.consts import XDP_ATTACHED_SKB
+from pyritex.netlink.consts import XDP_ATTACHED_HW
+from pyritex.netlink.consts import XDP_ATTACHED_MULTI
+from pyritex.netlink.consts import XDP_FLAGS_UPDATE_IF_NOEXIST
+from pyritex.netlink.consts import XDP_FLAGS_SKB_MODE
+from pyritex.netlink.consts import XDP_FLAGS_DRV_MODE
+from pyritex.netlink.consts import XDP_FLAGS_HW_MODE
+from pyritex.netlink.consts import XDP_FLAGS_REPLACE
+from pyritex.netlink.consts import XDP_FLAGS_MODES
+from pyritex.netlink.consts import XDP_FLAGS_MASK
+from pyritex.netlink.consts import IFLA_XDP_UNSPEC
+from pyritex.netlink.consts import IFLA_XDP_FD
+from pyritex.netlink.consts import IFLA_XDP_ATTACHED
+from pyritex.netlink.consts import IFLA_XDP_FLAGS
+from pyritex.netlink.consts import IFLA_XDP_PROG_ID
+from pyritex.netlink.consts import IFLA_XDP_DRV_PROG_ID
+from pyritex.netlink.consts import IFLA_XDP_SKB_PROG_ID
+from pyritex.netlink.consts import IFLA_XDP_HW_PROG_ID
+from pyritex.netlink.consts import IFLA_XDP_EXPECTED_FD
+from pyritex.netlink.consts import IFLA_XDP_MAX
 from pyritex.netlink.consts import RTNLGRP_LINK
 from pyritex.netlink.consts import SOL_NETLINK
 from pyritex.netlink.consts import NLMSG_MIN_TYPE
@@ -340,17 +519,195 @@ __all__ = [
     "RouteMessage",
     "NetlinkHeader",
     "RtMsg",
+    "AF_UNSPEC",
     "AF_INET",
     "AF_NETLINK",
     "AF_BRIDGE",
-    "IFLA_IFNAME",
+    "AF_UNIX",
+    "AF_LOCAL",
+    "AF_AX25",
+    "AF_IPX",
+    "AF_APPLETALK",
+    "AF_NETROM",
+    "AF_ATMPVC",
+    "AF_X25",
+    "AF_INET6",
+    "AF_ROSE",
+    "AF_DECNET",
+    "AF_NETBEUI",
+    "AF_SECURITY",
+    "AF_KEY",
+    "AF_PACKET",
+    "AF_ASH",
+    "AF_ECONET",
+    "AF_ATMSVC",
+    "AF_RDS",
+    "AF_SNA",
+    "AF_IRDA",
+    "AF_PPPOX",
+    "AF_WANPIPE",
+    "AF_LLC",
+    "AF_IB",
+    "AF_MPLS",
+    "AF_CAN",
+    "AF_TIPC",
+    "AF_BLUETOOTH",
+    "AF_IUCV",
+    "AF_RXRPC",
+    "AF_ISDN",
+    "AF_PHONET",
+    "AF_IEEE802154",
+    "AF_CAIF",
+    "AF_ALG",
+    "AF_NFC",
+    "AF_VSOCK",
+    "AF_KCM",
+    "AF_QIPCRTR",
+    "AF_SMC",
+    "AF_XDP",
+    "AF_MCTP",
+    "AF_MAX",
+    "PF_UNSPEC",
+    "PF_UNIX",
+    "PF_LOCAL",
+    "PF_INET",
+    "PF_AX25",
+    "PF_IPX",
+    "PF_APPLETALK",
+    "PF_NETROM",
+    "PF_BRIDGE",
+    "PF_ATMPVC",
+    "PF_X25",
+    "PF_INET6",
+    "PF_ROSE",
+    "PF_DECNET",
+    "PF_NETBEUI",
+    "PF_SECURITY",
+    "PF_KEY",
+    "PF_NETLINK",
+    "PF_ROUTE",
+    "PF_PACKET",
+    "PF_ASH",
+    "PF_ECONET",
+    "PF_ATMSVC",
+    "PF_RDS",
+    "PF_SNA",
+    "PF_IRDA",
+    "PF_PPPOX",
+    "PF_WANPIPE",
+    "PF_LLC",
+    "PF_IB",
+    "PF_MPLS",
+    "PF_CAN",
+    "PF_TIPC",
+    "PF_BLUETOOTH",
+    "PF_IUCV",
+    "PF_RXRPC",
+    "PF_ISDN",
+    "PF_PHONET",
+    "PF_IEEE802154",
+    "PF_CAIF",
+    "PF_ALG",
+    "PF_NFC",
+    "PF_VSOCK",
+    "PF_KCM",
+    "PF_QIPCRTR",
+    "PF_SMC",
+    "PF_XDP",
+    "PF_MCTP",
+    "PF_MAX",
     "IFF_LOWER_UP",
     "IFF_DORMANT",
+    "IFLA_UNSPEC",
+    "IFLA_ADDRESS",
+    "IFLA_BROADCAST",
+    "IFLA_IFNAME",
+    "IFLA_MTU",
+    "IFLA_LINK",
+    "IFLA_QDISC",
+    "IFLA_STATS",
+    "IFLA_COST",
+    "IFLA_PRIORITY",
+    "IFLA_MASTER",
     "IFLA_WIRELESS",
+    "IFLA_PROTINFO",
+    "IFLA_TXQLEN",
+    "IFLA_MAP",
+    "IFLA_WEIGHT",
     "IFLA_OPERSTATE",
     "IFLA_LINKMODE",
+    "IFLA_LINKINFO",
+    "IFLA_NET_NS_PID",
+    "IFLA_IFALIAS",
+    "IFLA_NUM_VF",
+    "IFLA_VFINFO_LIST",
+    "IFLA_STATS64",
+    "IFLA_VF_PORTS",
+    "IFLA_PORT_SELF",
+    "IFLA_AF_SPEC",
+    "IFLA_GROUP",
+    "IFLA_NET_NS_FD",
+    "IFLA_EXT_MASK",
+    "IFLA_PROMISCUITY",
+    "IFLA_NUM_TX_QUEUES",
+    "IFLA_NUM_RX_QUEUES",
+    "IFLA_CARRIER",
+    "IFLA_PHYS_PORT_ID",
+    "IFLA_CARRIER_CHANGES",
+    "IFLA_PHYS_SWITCH_ID",
+    "IFLA_LINK_NETNSID",
+    "IFLA_PHYS_PORT_NAME",
+    "IFLA_PROTO_DOWN",
+    "IFLA_GSO_MAX_SEGS",
+    "IFLA_GSO_MAX_SIZE",
+    "IFLA_PAD",
+    "IFLA_XDP",
+    "IFLA_EVENT",
+    "IFLA_NEW_NETNSID",
+    "IFLA_IF_NETNSID",
+    "IFLA_CARRIER_UP_COUNT",
+    "IFLA_CARRIER_DOWN_COUNT",
+    "IFLA_NEW_IFINDEX",
+    "IFLA_MIN_MTU",
+    "IFLA_MAX_MTU",
+    "IFLA_PROP_LIST",
+    "IFLA_ALT_IFNAME",
+    "IFLA_PERM_ADDRESS",
+    "IFLA_PROTO_DOWN_REASON",
+    "IFLA_MAX",
+    "IF_OPER_UNKNOWN",
+    "IF_OPER_NOTPRESENT",
+    "IF_OPER_DOWN",
+    "IF_OPER_LOWERLAYERDOWN",
+    "IF_OPER_TESTING",
     "IF_OPER_DORMANT",
     "IF_OPER_UP",
+    "LINK_XSTATS_TYPE_UNSPEC",
+    "LINK_XSTATS_TYPE_BRIDGE",
+    "LINK_XSTATS_TYPE_BOND",
+    "LINK_XSTATS_TYPE_MAX",
+    "XDP_ATTACHED_NONE",
+    "XDP_ATTACHED_DRV",
+    "XDP_ATTACHED_SKB",
+    "XDP_ATTACHED_HW",
+    "XDP_ATTACHED_MULTI",
+    "XDP_FLAGS_UPDATE_IF_NOEXIST",
+    "XDP_FLAGS_SKB_MODE",
+    "XDP_FLAGS_DRV_MODE",
+    "XDP_FLAGS_HW_MODE",
+    "XDP_FLAGS_REPLACE",
+    "XDP_FLAGS_MODES",
+    "XDP_FLAGS_MASK",
+    "IFLA_XDP_UNSPEC",
+    "IFLA_XDP_FD",
+    "IFLA_XDP_ATTACHED",
+    "IFLA_XDP_FLAGS",
+    "IFLA_XDP_PROG_ID",
+    "IFLA_XDP_DRV_PROG_ID",
+    "IFLA_XDP_SKB_PROG_ID",
+    "IFLA_XDP_HW_PROG_ID",
+    "IFLA_XDP_EXPECTED_FD",
+    "IFLA_XDP_MAX",
     "RTNLGRP_LINK",
     "SOL_NETLINK",
     "NLMSG_MIN_TYPE",
